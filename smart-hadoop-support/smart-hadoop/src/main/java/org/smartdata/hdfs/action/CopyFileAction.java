@@ -18,9 +18,9 @@
 package org.smartdata.hdfs.action;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartdata.action.ActionException;
@@ -30,7 +30,6 @@ import org.smartdata.action.annotation.ActionSignature;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.net.URI;
 import java.util.Map;
 
@@ -145,7 +144,6 @@ public class CopyFileAction extends HdfsAction {
 
   private long getFileSize(String fileName) throws IOException {
     if (fileName.startsWith("hdfs")) {
-      // TODO read conf from files
       Configuration conf = new Configuration();
       // Get InputStream from URL
       FileSystem fs = FileSystem.get(URI.create(fileName), conf);
@@ -175,10 +173,19 @@ public class CopyFileAction extends HdfsAction {
       Configuration conf = new Configuration();
       // Get OutPutStream from URL
       FileSystem fs = FileSystem.get(URI.create(dest), conf);
+      int replication = DFSConfigKeys.DFS_REPLICATION_DEFAULT;
+      try {
+        replication = fs.getServerDefaults(new Path(dest)).getReplication();
+        if (replication != DFSConfigKeys.DFS_REPLICATION_DEFAULT) {
+          LOG.debug("Remote Replications =" + replication);
+        }
+      } catch (IOException e) {
+        LOG.debug("Get Server default replication error!", e);
+      }
       if (fs.exists(new Path(dest))) {
         return fs.append(new Path(dest));
       }
-      return fs.create(new Path(dest), true);
+      return fs.create(new Path(dest), (short) replication);
     } else {
       // Copy between different dirs of the same cluster
       if (dfsClient.exists(dest)) {

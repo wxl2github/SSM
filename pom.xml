@@ -45,13 +45,14 @@
     <module>smart-integration</module>
     <module>smart-hadoop-support</module>
     <module>smart-tidb</module>
+    <module>smart-alluxio-support</module>
   </modules>
 
   <properties>
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
     <hadoop.version>2.7.3</hadoop.version>
-    <alluxio.version>1.4.0</alluxio.version>
+    <alluxio.version>1.5.0</alluxio.version>
     <junit.version>4.11</junit.version>
     <scala.version>2.11.8</scala.version>
     <scala.binary.version>2.11</scala.binary.version>
@@ -69,6 +70,7 @@
     <gson.version>2.2</gson.version>
     <test.build.dir>${project.build.directory}/test-dir</test.build.dir>
     <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
+    <kerby.version>1.0.1</kerby.version>
   </properties>
 
   <profiles>
@@ -77,9 +79,6 @@
       <activation>
         <jdk>[1.8,)</jdk>
       </activation>
-      <modules>
-        <module>smart-alluxio-support</module>
-      </modules>
     </profile>
 
     <profile>
