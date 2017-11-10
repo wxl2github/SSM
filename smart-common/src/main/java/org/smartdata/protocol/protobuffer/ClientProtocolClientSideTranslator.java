@@ -19,11 +19,18 @@ package org.smartdata.protocol.protobuffer;
 
 import com.google.protobuf.ServiceException;
 import org.apache.hadoop.ipc.RPC;
+import org.smartdata.model.FileContainerInfo;
+import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoRequestProto;
+import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoResponseProto;
+import org.smartdata.protocol.ClientServerProto.GetSmallFileListRequestProto;
+import org.smartdata.protocol.ClientServerProto.GetSmallFileListResponseProto;
 import org.smartdata.protocol.ClientServerProto.ReportFileAccessEventRequestProto;
 import org.smartdata.protocol.SmartClientProtocol;
 import org.smartdata.metrics.FileAccessEvent;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientProtocolClientSideTranslator implements
     java.io.Closeable, SmartClientProtocol {
@@ -50,6 +57,34 @@ public class ClientProtocolClientSideTranslator implements
             .build();
     try {
       rpcProxy.reportFileAccessEvent(null, req);
+    } catch (ServiceException e) {
+      throw ProtoBufferHelper.getRemoteException(e);
+    }
+  }
+
+  @Override
+  public FileContainerInfo getFileContainerInfo(String filePath) throws IOException {
+    GetFileContainerInfoRequestProto req =
+        GetFileContainerInfoRequestProto.newBuilder()
+            .setFilePath(filePath)
+            .build();
+    try {
+      GetFileContainerInfoResponseProto proto = rpcProxy.getFileContainerInfo(null, req);
+      return new FileContainerInfo(
+          proto.getContainerFilePath(), proto.getOffset(), proto.getLength());
+    } catch (ServiceException e) {
+      throw ProtoBufferHelper.getRemoteException(e);
+    }
+  }
+
+  @Override
+  public List<String> getSmallFileList() throws IOException {
+    GetSmallFileListRequestProto req = GetSmallFileListRequestProto.newBuilder().build();
+    try {
+      GetSmallFileListResponseProto proto = rpcProxy.getSmallFileList(null, req);
+      ArrayList<String> smallFileList = new ArrayList<>();
+      smallFileList.addAll(proto.getSmallFileListList());
+      return smallFileList;
     } catch (ServiceException e) {
       throw ProtoBufferHelper.getRemoteException(e);
     }

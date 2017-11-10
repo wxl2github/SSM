@@ -19,15 +19,12 @@ package org.smartdata.hdfs.client;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.UnresolvedLinkException;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSInputStream;
 import org.apache.hadoop.hdfs.SmartDFSInputStream;
 import org.smartdata.client.SmartClient;
-import org.smartdata.conf.SmartConfKeys;
 import org.smartdata.metrics.FileAccessEvent;
 import org.smartdata.model.FileContainerInfo;
-import org.smartdata.utils.StringUtil;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -38,14 +35,14 @@ import java.util.List;
 public class SmartDFSClient extends DFSClient {
   private SmartClient smartClient = null;
   private boolean healthy = false;
-  private List<String> smallFileDirs = new ArrayList<>();
+  private List<String> smallFileList = new ArrayList<>();
 
   public SmartDFSClient(InetSocketAddress nameNodeAddress, Configuration conf,
       InetSocketAddress smartServerAddress) throws IOException {
     super(nameNodeAddress, conf);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      initSmallFileDirs(conf);
+      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -58,7 +55,7 @@ public class SmartDFSClient extends DFSClient {
     super(nameNodeUri, conf);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      initSmallFileDirs(conf);
+      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -72,7 +69,7 @@ public class SmartDFSClient extends DFSClient {
     super(nameNodeUri, conf, stats);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      initSmallFileDirs(conf);
+      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -85,7 +82,7 @@ public class SmartDFSClient extends DFSClient {
     super(conf);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      initSmallFileDirs(conf);
+      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -97,7 +94,7 @@ public class SmartDFSClient extends DFSClient {
     super(conf);
     try {
       smartClient = new SmartClient(conf);
-      initSmallFileDirs(conf);
+      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -105,66 +102,54 @@ public class SmartDFSClient extends DFSClient {
     }
   }
 
-  private void initSmallFileDirs(Configuration conf) {
-    String[] dirs = conf.getTrimmedStrings(SmartConfKeys.SMART_SMALL_FILE_DIRS_KEY);
-    if (dirs == null || dirs.length == 0) {
-      return;
+  public FileContainerInfo getFileContainerInfo(String src) throws IOException {
+    if (!healthy) {
+      throw new IOException("smart client is not healthy.");
     }
-    for (String dir : dirs) {
-      dir = dir + (dir.endsWith("/") ? "" : "/");
-      smallFileDirs.add(dir);
-    }
+    return smartClient.getFileContainerInfo(src);
   }
 
-  private boolean isInSmallFileDir(String file) {
-    for (String dir : smallFileDirs) {
-      if (file.startsWith(dir)) {
-        return true;
-      }
+  public List<String> getSmallFileList() throws IOException {
+    if (!healthy) {
+      throw new IOException("smart client is not healthy.");
     }
-    return false;
+    return smartClient.getSmallFileList();
   }
 
-  private FileContainerInfo getFileContainerInfo(String src) {
-    String baseDir = StringUtil.getBaseDir(src);
-    String fileName = src.replace(baseDir, "");
-    return new FileContainerInfo("", 0, 0);
-  }
-
-  // TODO: handle small file access event
-  @Override
-  public DFSInputStream open(String src)
-      throws IOException, UnresolvedLinkException {
-    DFSInputStream is;
-    if (!isInSmallFileDir(src)) {
-      is = super.open(src);
-      reportFileAccessEvent(src);
-    } else {
-      is = new SmartDFSInputStream(this, src, true, getFileContainerInfo(src));
-    }
-    return is;
+  private boolean isSmallFile(String file) {
+    return smallFileList != null && smallFileList.contains(file);
   }
 
   @Override
-  public DFSInputStream open(String src, int buffersize,
-      boolean verifyChecksum)
-      throws IOException, UnresolvedLinkException {
-    DFSInputStream is;
-    if (!isInSmallFileDir(src)) {
-      is = super.open(src, buffersize, verifyChecksum);
-      reportFileAccessEvent(src);
+  public DFSInputStream open(String src) throws IOException {
+    reportFileAccessEvent(src);
+    if (!isSmallFile(src)) {
+      return super.open(src);
     } else {
-      is = new SmartDFSInputStream(this, src, true, getFileContainerInfo(src));
+      FileContainerInfo fileContainerInfo = getFileContainerInfo(src);
+      String containerFile = fileContainerInfo.getContainerFilePath();
+      return new SmartDFSInputStream(this, containerFile, true, fileContainerInfo);
     }
-    return is;
+  }
+
+  @Override
+  public DFSInputStream open(String src, int bufferSize, boolean verifyChecksum) throws IOException {
+    reportFileAccessEvent(src);
+    if (!isSmallFile(src)) {
+      return super.open(src, bufferSize, verifyChecksum);
+    } else {
+      FileContainerInfo fileContainerInfo = getFileContainerInfo(src);
+      String containerFile = fileContainerInfo.getContainerFilePath();
+      return new SmartDFSInputStream(this, containerFile, verifyChecksum, fileContainerInfo);
+    }
   }
 
   @Deprecated
   @Override
-  public DFSInputStream open(String src, int buffersize,
+  public DFSInputStream open(String src, int bufferSize,
       boolean verifyChecksum, FileSystem.Statistics stats)
-      throws IOException, UnresolvedLinkException {
-    return open(src, buffersize, verifyChecksum);
+      throws IOException {
+    return open(src, bufferSize, verifyChecksum);
   }
 
   private void reportFileAccessEvent(String src) {

@@ -20,8 +20,11 @@ package org.smartdata.protocol.protobuffer;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import org.smartdata.model.ActionDescriptor;
-import org.smartdata.model.CmdletState;
 import org.smartdata.model.ActionInfo;
+import org.smartdata.model.CmdletInfo;
+import org.smartdata.model.CmdletState;
+import org.smartdata.model.FileContainerInfo;
+import org.smartdata.model.RuleInfo;
 import org.smartdata.protocol.AdminServerProto;
 import org.smartdata.protocol.AdminServerProto.CheckRuleRequestProto;
 import org.smartdata.protocol.AdminServerProto.CheckRuleResponseProto;
@@ -63,11 +66,13 @@ import org.smartdata.protocol.AdminServerProto.ListActionsSupportedRequestProto;
 import org.smartdata.protocol.AdminServerProto.ActionDescriptorProto;
 
 import org.smartdata.protocol.ClientServerProto;
+import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoRequestProto;
+import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoResponseProto;
+import org.smartdata.protocol.ClientServerProto.GetSmallFileListRequestProto;
+import org.smartdata.protocol.ClientServerProto.GetSmallFileListResponseProto;
 import org.smartdata.protocol.ClientServerProto.ReportFileAccessEventRequestProto;
 import org.smartdata.protocol.ClientServerProto.ReportFileAccessEventResponseProto;
 import org.smartdata.SmartServiceState;
-import org.smartdata.model.RuleInfo;
-import org.smartdata.model.CmdletInfo;
 import org.smartdata.protocol.SmartServerProtocols;
 
 import java.io.IOException;
@@ -323,6 +328,35 @@ public class ServerProtocolsServerSideTranslator implements
     try {
       server.reportFileAccessEvent(ProtoBufferHelper.convert(req));
       return ReportFileAccessEventResponseProto.newBuilder().build();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public GetFileContainerInfoResponseProto getFileContainerInfo(
+      RpcController controller, GetFileContainerInfoRequestProto req)
+      throws ServiceException {
+    try {
+      FileContainerInfo fileContainerInfo = server.getFileContainerInfo(req.getFilePath());
+      return GetFileContainerInfoResponseProto.newBuilder()
+          .setContainerFilePath(fileContainerInfo.getContainerFilePath())
+          .setOffset(fileContainerInfo.getOffset())
+          .setLength(fileContainerInfo.getLength())
+          .build();
+    } catch (IOException e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  @Override
+  public GetSmallFileListResponseProto getSmallFileList(
+      RpcController controller, GetSmallFileListRequestProto req) throws ServiceException {
+    try {
+      List<String> smallFileList = server.getSmallFileList();
+      return GetSmallFileListResponseProto.newBuilder()
+          .addAllSmallFileList(smallFileList)
+          .build();
     } catch (IOException e) {
       throw new ServiceException(e);
     }

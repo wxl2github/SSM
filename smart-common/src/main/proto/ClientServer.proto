@@ -31,7 +31,29 @@ message ReportFileAccessEventRequestProto {
 message ReportFileAccessEventResponseProto {
 }
 
+message GetFileContainerInfoRequestProto {
+  required string filePath = 1;
+}
+
+message GetFileContainerInfoResponseProto {
+  required string containerFilePath = 1;
+  required int64 offset = 2;
+  required int64 length = 3;
+}
+
+message GetSmallFileListRequestProto {
+}
+
+message GetSmallFileListResponseProto {
+  repeated string smallFileList = 1;
+}
+
 service protoService {
   rpc reportFileAccessEvent (ReportFileAccessEventRequestProto)
   returns (ReportFileAccessEventResponseProto);
+  rpc getFileContainerInfo (GetFileContainerInfoRequestProto)
+  returns (GetFileContainerInfoResponseProto);
+  rpc getSmallFileList (GetSmallFileListRequestProto)
+  returns (GetSmallFileListResponseProto);
+
 }
