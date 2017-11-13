@@ -122,24 +122,26 @@ public class SmartDFSClient extends DFSClient {
 
   @Override
   public DFSInputStream open(String src) throws IOException {
-    reportFileAccessEvent(src);
     if (isSmallFile(src)) {
       FileContainerInfo fileContainerInfo = getFileContainerInfo(src);
       String containerFile = fileContainerInfo.getContainerFilePath();
+      reportFileAccessEvent(containerFile);
       return new SmartDFSInputStream(this, containerFile, true, fileContainerInfo);
     } else {
+      reportFileAccessEvent(src);
       return super.open(src);
     }
   }
 
   @Override
   public DFSInputStream open(String src, int bufferSize, boolean verifyChecksum) throws IOException {
-    reportFileAccessEvent(src);
     if (isSmallFile(src)) {
       FileContainerInfo fileContainerInfo = getFileContainerInfo(src);
       String containerFile = fileContainerInfo.getContainerFilePath();
+      reportFileAccessEvent(containerFile);
       return new SmartDFSInputStream(this, containerFile, verifyChecksum, fileContainerInfo);
     } else {
+      reportFileAccessEvent(src);
       return super.open(src, bufferSize, verifyChecksum);
     }
   }
