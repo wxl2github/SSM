@@ -72,7 +72,7 @@ public class TestSmallFileAction extends MiniClusterHarness {
     smallFileCompactAction.setDfsClient(dfsClient);
     smallFileCompactAction.setContext(smartContext);
     Map<String, String> args = new HashMap<>();
-    args.put(SmallFileCompactAction.SMALL_FILES, new Gson().toJson(smallFileList));
+    args.put(HdfsAction.FILE_PATH, new Gson().toJson(smallFileList));
     args.put(SmallFileCompactAction.CONTAINER_FILE, "/test/small_files/container_file");
     smallFileCompactAction.init(args);
     smallFileCompactAction.execute();

@@ -61,11 +61,11 @@ public class TestSmallFileRule extends MiniSmartClusterHarness {
   }
 
   @Test
-  public void testScheduler() throws Exception {
+  public void testRule() throws Exception {
     waitTillSSMExitSafeMode();
 
-    String rule = "file: path matches \"/test/small_files/file*\" and length < 2t0KB" +
-        " | compact -container_file \"/test/small_files/container_file\"";
+    String rule = "file: path matches \"/test/small_files/file*\" and length < 20KB" +
+        " | compact -containerFile \"/test/small_files/container_file\"";
     SmartAdmin admin = new SmartAdmin(smartContext.getConf());
     admin.submitRule(rule, RuleState.ACTIVE);
 

@@ -23,7 +23,7 @@ import org.apache.hadoop.fs.Path;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.smartdata.hdfs.action.SmallFileCompactAction;
+import org.smartdata.hdfs.action.HdfsAction;
 import org.smartdata.metastore.MetaStore;
 import org.smartdata.model.CmdletDescriptor;
 import org.smartdata.model.CmdletState;
@@ -76,7 +76,7 @@ public class TestSmallFileScheduler extends MiniSmartClusterHarness {
     CmdletManager cmdletManager = ssm.getCmdletManager();
     CmdletDescriptor cmdletDescriptor = CmdletDescriptor.fromCmdletString("compact -containerFile " +
         "/test/small_files/container_file");
-    cmdletDescriptor.addActionArg(0, SmallFileCompactAction.SMALL_FILES, new Gson().toJson(smallFileList));
+    cmdletDescriptor.addActionArg(0, HdfsAction.FILE_PATH, new Gson().toJson(smallFileList));
     long cmdId = cmdletManager.submitCmdlet(cmdletDescriptor);
 
     while (true) {

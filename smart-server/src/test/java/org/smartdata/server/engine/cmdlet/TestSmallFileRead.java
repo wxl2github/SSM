@@ -24,18 +24,15 @@ import org.apache.hadoop.hdfs.DFSInputStream;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.smartdata.hdfs.action.SmallFileCompactAction;
+import org.smartdata.hdfs.action.HdfsAction;
 import org.smartdata.hdfs.client.SmartDFSClient;
-import org.smartdata.metastore.MetaStore;
 import org.smartdata.model.CmdletDescriptor;
 import org.smartdata.model.CmdletState;
-import org.smartdata.model.FileContainerInfo;
 import org.smartdata.server.MiniSmartClusterHarness;
 import org.smartdata.server.engine.CmdletManager;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 public class TestSmallFileRead extends MiniSmartClusterHarness {
@@ -47,34 +44,6 @@ public class TestSmallFileRead extends MiniSmartClusterHarness {
   public void init() throws Exception {
     super.init();
     createSmallFiles();
-  }
-
-  private void createMetaData() throws Exception {
-    MetaStore metaStore = ssm.getMetaStore();
-    FileContainerInfo fileContainerInfo_1 = new FileContainerInfo("/test/contain_file", 0, 10240);
-    FileContainerInfo fileContainerInfo_2 = new FileContainerInfo("/test/contain_file", 10240, 10240);
-    metaStore.insertSmallFile("/test/small_file_1", fileContainerInfo_1);
-    metaStore.insertSmallFile("/test/small_file_2", fileContainerInfo_2);
-  }
-
-  @Test
-  public void testGetFileContainerInfoRpc() throws Exception {
-    createMetaData();
-    SmartDFSClient smartDFSClient = new SmartDFSClient(smartContext.getConf());
-    FileContainerInfo fileContainerInfo = smartDFSClient.getFileContainerInfo("/test/small_file_1");
-    Assert.assertEquals("/test/contain_file", fileContainerInfo.getContainerFilePath());
-    Assert.assertEquals(0, fileContainerInfo.getOffset());
-    Assert.assertEquals(10240, fileContainerInfo.getLength());
-  }
-
-  @Test
-  public void testGetSmallFileListRpc() throws Exception {
-    createMetaData();
-    SmartDFSClient smartDFSClient = new SmartDFSClient(smartContext.getConf());
-    List<String> smallFileList = smartDFSClient.getSmallFileList();
-    Assert.assertEquals(2, smallFileList.size());
-    Assert.assertEquals("/test/small_file_1", smallFileList.get(0));
-    Assert.assertEquals("/test/small_file_2", smallFileList.get(1));
   }
 
   private void createSmallFiles() throws Exception {
@@ -100,7 +69,7 @@ public class TestSmallFileRead extends MiniSmartClusterHarness {
     CmdletManager cmdletManager = ssm.getCmdletManager();
     CmdletDescriptor cmdletDescriptor = CmdletDescriptor.fromCmdletString("compact -containerFile " +
         "/test/small_files/container_file");
-    cmdletDescriptor.addActionArg(0, SmallFileCompactAction.SMALL_FILES, new Gson().toJson(smallFileList));
+    cmdletDescriptor.addActionArg(0, HdfsAction.FILE_PATH, new Gson().toJson(smallFileList));
     Thread.sleep(1000);
     long cmdId = cmdletManager.submitCmdlet(cmdletDescriptor);
 

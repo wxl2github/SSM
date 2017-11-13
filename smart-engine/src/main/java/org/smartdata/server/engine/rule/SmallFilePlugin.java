@@ -49,10 +49,14 @@ public class SmallFilePlugin implements RuleExecutorPlugin {
   }
 
   public List<String> preSubmitCmdlet(final RuleInfo ruleInfo, List<String> objects) {
-    String fileList = new Gson().toJson(objects);
-    objects.clear();
-    objects.add(fileList);
-    return objects;
+    if (objects.size() > 0) {
+      String fileList = new Gson().toJson(objects);
+      objects.clear();
+      objects.add(fileList);
+      return objects;
+    } else {
+      return null;
+    }
   }
 
   public CmdletDescriptor preSubmitCmdletDescriptor(
@@ -61,9 +65,7 @@ public class SmallFilePlugin implements RuleExecutorPlugin {
       if (descriptor.getActionName(i).equals("compact")) {
         Map<String, String> args = descriptor.getActionArgs(i);
         String smallFileList = args.get(HdfsAction.FILE_PATH);
-        if (!smallFileList.equals("[]")) {
-          descriptor.addActionArg(i, SmallFileCompactAction.SMALL_FILES, new Gson().toJson(smallFileList));
-          descriptor.deleteActionArg(i, HdfsAction.FILE_PATH);
+        if (smallFileList != null) {
           String containerFile = args.get(SmallFileCompactAction.CONTAINER_FILE);
           if (containerFile == null) {
             try {

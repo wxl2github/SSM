@@ -21,6 +21,7 @@ import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartdata.SmartContext;
+import org.smartdata.hdfs.action.HdfsAction;
 import org.smartdata.metastore.ActionSchedulerService;
 import org.smartdata.metastore.MetaStore;
 import org.smartdata.metastore.MetaStoreException;
@@ -81,7 +82,10 @@ public class SmallFileScheduler extends ActionSchedulerService {
 
         // Get file container info of small files
         long offset = 0L;
-        String smallFiles = action.getArgs().get("-smallFiles");
+        String smallFiles = action.getArgs().get(HdfsAction.FILE_PATH);
+        if (smallFiles == null) {
+          return ScheduleResult.FAIL;
+        }
         ArrayList<String> smallFileList = new Gson().fromJson(smallFiles, new ArrayList<String>().getClass());
         for (String filePath : smallFileList) {
           FileInfo fileInfo = metaStore.getFile(filePath);

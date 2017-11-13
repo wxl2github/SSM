@@ -40,12 +40,10 @@ import java.util.Map;
 @ActionSignature(
     actionId = "compact",
     displayName = "compact",
-    usage = SmallFileCompactAction.SMALL_FILES + " $files " +
-        SmallFileCompactAction.CONTAINER_FILE + " $container_file "
+    usage = HdfsAction.FILE_PATH + " $files " + SmallFileCompactAction.CONTAINER_FILE + " $container_file "
 )
 public class SmallFileCompactAction extends HdfsAction {
   private Configuration conf;
-  public static final String SMALL_FILES = "-smallFiles";
   public static final String CONTAINER_FILE = "-containerFile";
   private String smallFiles;
   private String containerFile;
@@ -55,7 +53,7 @@ public class SmallFileCompactAction extends HdfsAction {
   public void init(Map<String, String> args) {
     super.init(args);
     this.conf = getContext().getConf();
-    this.smallFiles = args.get(SMALL_FILES);
+    this.smallFiles = args.get(FILE_PATH);
     this.containerFile = args.get(CONTAINER_FILE);
   }
 
