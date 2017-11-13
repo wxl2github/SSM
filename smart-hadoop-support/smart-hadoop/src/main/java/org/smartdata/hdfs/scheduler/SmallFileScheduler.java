@@ -40,7 +40,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SmallFileScheduler extends ActionSchedulerService {
   private MetaStore metaStore;
-  private List<String> fileLock;
+  // <Container file path, retry number>
+  private Map<String, Integer> fileLock;
   private String containerFile = null;
   private Map<String, FileContainerInfo> fileContainerInfoMap;
   public static final Logger LOG = LoggerFactory.getLogger(SmallFileScheduler.class);
@@ -52,7 +53,7 @@ public class SmallFileScheduler extends ActionSchedulerService {
 
   @Override
   public void init() throws IOException {
-    this.fileLock = new ArrayList<>();
+    this.fileLock = new ConcurrentHashMap<>();
     this.fileContainerInfoMap = new ConcurrentHashMap<>();
   }
 
@@ -65,7 +66,7 @@ public class SmallFileScheduler extends ActionSchedulerService {
   public ScheduleResult onSchedule(ActionInfo actionInfo, LaunchAction action) {
     if (actionInfo.getActionName().equals("compact")) {
       try {
-        // Check container file is null
+        // Check if container file is null
         String containerFilePath = action.getArgs().get("-containerFile");
         if (containerFilePath == null) {
           return ScheduleResult.FAIL;
@@ -73,11 +74,18 @@ public class SmallFileScheduler extends ActionSchedulerService {
           this.containerFile = containerFilePath;
         }
 
-        if (fileLock.contains(containerFile)) {
-          LOG.error("This container file: " + containerFile + " is locked.");
-          return ScheduleResult.RETRY;
+        if (fileLock.containsKey(containerFile)) {
+          int retryNum = fileLock.get(containerFile);
+          if (retryNum > 3) {
+            LOG.error("This container file: " + containerFile + " is locked, retry failed.");
+            return ScheduleResult.FAIL;
+          } else {
+            LOG.warn("This container file: " + containerFile + " is locked, retry.");
+            fileLock.put(containerFile, retryNum + 1);
+            return ScheduleResult.RETRY;
+          }
         } else {
-          fileLock.add(containerFile); // Lock this container file
+          fileLock.put(containerFile, 0); // Lock this container file
         }
 
         // Get file container info of small files
@@ -128,7 +136,7 @@ public class SmallFileScheduler extends ActionSchedulerService {
             for (Map.Entry<String, FileContainerInfo> entry : fileContainerInfoMap.entrySet()) {
               metaStore.insertSmallFile(entry.getKey(), entry.getValue());
             }
-            if (fileLock.contains(containerFile)) {
+            if (fileLock.containsKey(containerFile)) {
               fileLock.remove(containerFile); // Remove container file lock
             }
           } catch (MetaStoreException e) {
