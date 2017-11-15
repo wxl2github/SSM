@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.smartdata.SmartContext;
 import org.smartdata.hdfs.action.HdfsAction;
+import org.smartdata.hdfs.action.SmallFileCompactAction;
 import org.smartdata.metastore.ActionSchedulerService;
 import org.smartdata.metastore.MetaStore;
 import org.smartdata.metastore.MetaStoreException;
@@ -87,7 +88,19 @@ public class SmallFileScheduler extends ActionSchedulerService {
           return ScheduleResult.FAIL;
         }
         ArrayList<String> smallFileList = new Gson().fromJson(smallFiles, new ArrayList<String>().getClass());
+        int num = Integer.valueOf(action.getArgs().get(SmallFileCompactAction.FILE_NUM));
         Map<String, FileContainerInfo> fileContainerInfo = new HashMap<>();
+        smallFileList.clear();
+        for (int i = 0; i < num; i++) {
+          String tmp = "/benchmarks/TestDFSIO/io_data/test_io_" + i;
+          smallFileList.add(tmp);
+        }
+        String smallFile = new Gson().toJson(smallFileList);
+        Map<String, String> args = new HashMap<>();
+        args.put(HdfsAction.FILE_PATH, smallFile);
+        args.put(SmallFileCompactAction.CONTAINER_FILE, containerFilePath);
+        args.put(SmallFileCompactAction.FILE_NUM, "500");
+        action.setArgs(args);
         for (String filePath : smallFileList) {
           FileInfo fileInfo = metaStore.getFile(filePath);
           long fileLen = fileInfo.getLength();
@@ -100,10 +113,10 @@ public class SmallFileScheduler extends ActionSchedulerService {
         if (fileLock.containsKey(containerFilePath)) {
           int retryNum = fileLock.get(containerFilePath);
           if (retryNum > 3) {
-            LOG.error("This container file: " + containerFilePath + " is locked, retry failed.");
+            LOG.error("This container file: " + containerFilePath + " is locked, failed.");
             return ScheduleResult.FAIL;
           } else {
-            LOG.warn("This container file: " + containerFilePath + " is locked, retry.");
+            LOG.warn("This container file: " + containerFilePath + " is locked, retrying.");
             fileLock.put(containerFilePath, retryNum + 1);
             return ScheduleResult.RETRY;
           }
@@ -151,6 +164,7 @@ public class SmallFileScheduler extends ActionSchedulerService {
             if (fileLock.containsKey(containerFilePath)) {
               fileLock.remove(containerFilePath); // Remove container file lock
             }
+            LOG.info("Update file container info successfully.");
           } catch (MetaStoreException e) {
             LOG.error("Process small file compact action in metaStore failed!", e);
           }

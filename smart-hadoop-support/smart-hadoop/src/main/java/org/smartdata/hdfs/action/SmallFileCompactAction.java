@@ -45,6 +45,7 @@ import java.util.Map;
 public class SmallFileCompactAction extends HdfsAction {
   private Configuration conf;
   public static final String CONTAINER_FILE = "-containerFile";
+  public static final String FILE_NUM = "-num";
   private String smallFiles;
   private String containerFile;
 
