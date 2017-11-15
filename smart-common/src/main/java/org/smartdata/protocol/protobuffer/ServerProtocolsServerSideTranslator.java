@@ -68,8 +68,8 @@ import org.smartdata.protocol.AdminServerProto.ActionDescriptorProto;
 import org.smartdata.protocol.ClientServerProto;
 import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoRequestProto;
 import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoResponseProto;
-import org.smartdata.protocol.ClientServerProto.GetSmallFileListRequestProto;
-import org.smartdata.protocol.ClientServerProto.GetSmallFileListResponseProto;
+import org.smartdata.protocol.ClientServerProto.IsSmallFileRequestProto;
+import org.smartdata.protocol.ClientServerProto.IsSmallFileResponseProto;
 import org.smartdata.protocol.ClientServerProto.ReportFileAccessEventRequestProto;
 import org.smartdata.protocol.ClientServerProto.ReportFileAccessEventResponseProto;
 import org.smartdata.SmartServiceState;
@@ -338,7 +338,7 @@ public class ServerProtocolsServerSideTranslator implements
       RpcController controller, GetFileContainerInfoRequestProto req)
       throws ServiceException {
     try {
-      FileContainerInfo fileContainerInfo = server.getFileContainerInfo(req.getFilePath());
+      FileContainerInfo fileContainerInfo = server.getFileContainerInfo(req.getSrc());
       return GetFileContainerInfoResponseProto.newBuilder()
           .setContainerFilePath(fileContainerInfo.getContainerFilePath())
           .setOffset(fileContainerInfo.getOffset())
@@ -350,12 +350,12 @@ public class ServerProtocolsServerSideTranslator implements
   }
 
   @Override
-  public GetSmallFileListResponseProto getSmallFileList(
-      RpcController controller, GetSmallFileListRequestProto req) throws ServiceException {
+  public IsSmallFileResponseProto isSmallFile(
+      RpcController controller, IsSmallFileRequestProto req) throws ServiceException {
     try {
-      List<String> smallFileList = server.getSmallFileList();
-      return GetSmallFileListResponseProto.newBuilder()
-          .addAllSmallFileList(smallFileList)
+      boolean isSmallFile = server.isSmallFile(req.getSrc());
+      return IsSmallFileResponseProto.newBuilder()
+          .setIsSmallFile(isSmallFile)
           .build();
     } catch (IOException e) {
       throw new ServiceException(e);

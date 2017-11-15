@@ -67,11 +67,12 @@ public class SmallFileCompactAction extends HdfsAction {
     for (String smallFile : fileList) {
       Long fileLen = getFileLength(smallFile);
       if (fileLen > 0) {
-        appendLog(String.format("Compact %s to %s", smallFile, containerFile));
+        appendLog(String.format("Compacting %s to %s", smallFile, containerFile));
         compact(smallFile, out, fileLen);
       }
     }
     out.close();
+    appendLog(String.format("Compact small files to %s successfully", containerFile));
   }
 
   /**

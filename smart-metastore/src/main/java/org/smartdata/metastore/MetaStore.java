@@ -1730,14 +1730,15 @@ public class MetaStore implements CopyMetaService, CmdletMetaService, BackupMeta
    */
   public void insertSmallFile(String path, FileContainerInfo fileContainerInfo)
       throws MetaStoreException {
-    if (smallFileDao.getCountByPath(path) != 0) {
+    if (smallFileDao.getCountByPath(path) > 0) {
       throw new MetaStoreException("This small file already exist.");
     }
     smallFileDao.addSmallFile(path, fileContainerInfo);
   }
 
-  public List<String> getSmallFileList() throws MetaStoreException {
-    return smallFileDao.getSmallFileList();
+  public boolean isSmallFile(String path) throws MetaStoreException {
+    int count = smallFileDao.getCountByPath(path);
+    return count > 0;
   }
 
   public FileContainerInfo getFileContainerInfo(String path) throws MetaStoreException {

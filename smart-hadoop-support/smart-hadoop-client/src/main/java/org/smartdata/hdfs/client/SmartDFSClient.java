@@ -29,20 +29,16 @@ import org.smartdata.model.FileContainerInfo;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SmartDFSClient extends DFSClient {
   private SmartClient smartClient = null;
   private boolean healthy = false;
-  private List<String> smallFileList = new ArrayList<>();
 
   public SmartDFSClient(InetSocketAddress nameNodeAddress, Configuration conf,
       InetSocketAddress smartServerAddress) throws IOException {
     super(nameNodeAddress, conf);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -55,7 +51,6 @@ public class SmartDFSClient extends DFSClient {
     super(nameNodeUri, conf);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -69,7 +64,6 @@ public class SmartDFSClient extends DFSClient {
     super(nameNodeUri, conf, stats);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -82,7 +76,6 @@ public class SmartDFSClient extends DFSClient {
     super(conf);
     try {
       smartClient = new SmartClient(conf, smartServerAddress);
-      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -94,7 +87,6 @@ public class SmartDFSClient extends DFSClient {
     super(conf);
     try {
       smartClient = new SmartClient(conf);
-      smallFileList = smartClient.getSmallFileList();
       healthy = true;
     } catch (IOException e) {
       super.close();
@@ -102,31 +94,13 @@ public class SmartDFSClient extends DFSClient {
     }
   }
 
-  public FileContainerInfo getFileContainerInfo(String src) throws IOException {
-    if (!healthy) {
-      throw new IOException("smart client is not healthy.");
-    }
-    return smartClient.getFileContainerInfo(src);
-  }
-
-  public List<String> getSmallFileList() throws IOException {
-    if (!healthy) {
-      throw new IOException("smart client is not healthy.");
-    }
-    return smartClient.getSmallFileList();
-  }
-
-  private boolean isSmallFile(String file) {
-    return smallFileList != null && smallFileList.contains(file);
-  }
-
   @Override
   public DFSInputStream open(String src) throws IOException {
     if (isSmallFile(src)) {
       FileContainerInfo fileContainerInfo = getFileContainerInfo(src);
-      String containerFile = fileContainerInfo.getContainerFilePath();
-      reportFileAccessEvent(containerFile);
-      return new SmartDFSInputStream(this, containerFile, true, fileContainerInfo);
+      String containerFilePath = fileContainerInfo.getContainerFilePath();
+      reportFileAccessEvent(containerFilePath);
+      return new SmartDFSInputStream(this, containerFilePath, true, fileContainerInfo);
     } else {
       reportFileAccessEvent(src);
       return super.open(src);
@@ -137,9 +111,9 @@ public class SmartDFSClient extends DFSClient {
   public DFSInputStream open(String src, int bufferSize, boolean verifyChecksum) throws IOException {
     if (isSmallFile(src)) {
       FileContainerInfo fileContainerInfo = getFileContainerInfo(src);
-      String containerFile = fileContainerInfo.getContainerFilePath();
-      reportFileAccessEvent(containerFile);
-      return new SmartDFSInputStream(this, containerFile, verifyChecksum, fileContainerInfo);
+      String containerFilePath = fileContainerInfo.getContainerFilePath();
+      reportFileAccessEvent(containerFilePath);
+      return new SmartDFSInputStream(this, containerFilePath, verifyChecksum, fileContainerInfo);
     } else {
       reportFileAccessEvent(src);
       return super.open(src, bufferSize, verifyChecksum);
@@ -152,6 +126,20 @@ public class SmartDFSClient extends DFSClient {
       boolean verifyChecksum, FileSystem.Statistics stats)
       throws IOException {
     return open(src, bufferSize, verifyChecksum);
+  }
+
+  private FileContainerInfo getFileContainerInfo(String src) throws IOException {
+    if (!healthy) {
+      throw new IOException("Smart client is not healthy.");
+    }
+    return smartClient.getFileContainerInfo(src);
+  }
+
+  private boolean isSmallFile(String src) throws IOException {
+    if (!healthy) {
+      throw new IOException("Smart client is not healthy.");
+    }
+    return smartClient.isSmallFile(src);
   }
 
   private void reportFileAccessEvent(String src) {

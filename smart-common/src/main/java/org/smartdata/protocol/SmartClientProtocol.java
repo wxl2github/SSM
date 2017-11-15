@@ -21,13 +21,12 @@ import org.smartdata.metrics.FileAccessEvent;
 import org.smartdata.model.FileContainerInfo;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Interface between SmartClient and SmartServer.
  */
 public interface SmartClientProtocol {
   void reportFileAccessEvent(FileAccessEvent event) throws IOException;
-  FileContainerInfo getFileContainerInfo(String filePath) throws IOException;
-  List<String> getSmallFileList() throws IOException;
+  FileContainerInfo getFileContainerInfo(String src) throws IOException;
+  boolean isSmallFile(String src) throws IOException;
 }

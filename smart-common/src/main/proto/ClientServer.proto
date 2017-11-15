@@ -32,7 +32,7 @@ message ReportFileAccessEventResponseProto {
 }
 
 message GetFileContainerInfoRequestProto {
-  required string filePath = 1;
+  required string src = 1;
 }
 
 message GetFileContainerInfoResponseProto {
@@ -41,11 +41,12 @@ message GetFileContainerInfoResponseProto {
   required int64 length = 3;
 }
 
-message GetSmallFileListRequestProto {
+message IsSmallFileRequestProto {
+  required string src = 1;
 }
 
-message GetSmallFileListResponseProto {
-  repeated string smallFileList = 1;
+message IsSmallFileResponseProto {
+  required bool isSmallFile = 1;
 }
 
 service protoService {
@@ -53,7 +54,6 @@ service protoService {
   returns (ReportFileAccessEventResponseProto);
   rpc getFileContainerInfo (GetFileContainerInfoRequestProto)
   returns (GetFileContainerInfoResponseProto);
-  rpc getSmallFileList (GetSmallFileListRequestProto)
-  returns (GetSmallFileListResponseProto);
-
+  rpc isSmallFile (IsSmallFileRequestProto)
+  returns (IsSmallFileResponseProto);
 }

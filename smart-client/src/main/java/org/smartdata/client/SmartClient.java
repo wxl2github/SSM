@@ -76,8 +76,7 @@ public class SmartClient implements java.io.Closeable, SmartClientProtocol {
   }
 
   @Override
-  public void reportFileAccessEvent(FileAccessEvent event)
-      throws IOException {
+  public void reportFileAccessEvent(FileAccessEvent event) throws IOException {
     if (!shouldIgnore(event.getPath())) {
       checkOpen();
       server.reportFileAccessEvent(event);
@@ -85,16 +84,15 @@ public class SmartClient implements java.io.Closeable, SmartClientProtocol {
   }
 
   @Override
-  public List<String> getSmallFileList() throws IOException {
+  public boolean isSmallFile(String src) throws IOException {
     checkOpen();
-    return server.getSmallFileList();
+    return server.isSmallFile(src);
   }
 
   @Override
-  public FileContainerInfo getFileContainerInfo(String filePath)
-      throws IOException {
+  public FileContainerInfo getFileContainerInfo(String src) throws IOException {
       checkOpen();
-      return server.getFileContainerInfo(filePath);
+      return server.getFileContainerInfo(src);
   }
 
   private boolean shouldIgnore(String path) {
@@ -106,8 +104,7 @@ public class SmartClient implements java.io.Closeable, SmartClientProtocol {
     return false;
   }
 
-
-  public void checkOpen() throws IOException {
+  private void checkOpen() throws IOException {
     if (!running) {
       throw new IOException("SmartClient closed");
     }

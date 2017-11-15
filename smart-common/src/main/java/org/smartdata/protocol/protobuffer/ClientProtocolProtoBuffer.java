@@ -22,8 +22,8 @@ import com.google.protobuf.ServiceException;
 import org.apache.hadoop.ipc.ProtocolInfo;
 import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoRequestProto;
 import org.smartdata.protocol.ClientServerProto.GetFileContainerInfoResponseProto;
-import org.smartdata.protocol.ClientServerProto.GetSmallFileListRequestProto;
-import org.smartdata.protocol.ClientServerProto.GetSmallFileListResponseProto;
+import org.smartdata.protocol.ClientServerProto.IsSmallFileRequestProto;
+import org.smartdata.protocol.ClientServerProto.IsSmallFileResponseProto;
 import org.smartdata.protocol.ClientServerProto.ReportFileAccessEventRequestProto;
 import org.smartdata.protocol.ClientServerProto.ReportFileAccessEventResponseProto;
 
@@ -36,6 +36,6 @@ public interface ClientProtocolProtoBuffer {
   GetFileContainerInfoResponseProto getFileContainerInfo(
       RpcController controller, GetFileContainerInfoRequestProto req) throws ServiceException;
 
-  GetSmallFileListResponseProto getSmallFileList(
-      RpcController controller, GetSmallFileListRequestProto req) throws ServiceException;
+  IsSmallFileResponseProto isSmallFile(
+      RpcController controller, IsSmallFileRequestProto req) throws ServiceException;
 }

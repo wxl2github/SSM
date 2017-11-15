@@ -29,30 +29,30 @@ import java.util.EnumSet;
 import java.util.List;
 
 public class SmartDFSInputStream extends DFSInputStream {
-  private FileContainerInfo containerFileInfo;
+  private FileContainerInfo fileContainerInfo;
 
-  public SmartDFSInputStream(DFSClient dfsClient, String containerFile,
-      boolean verifyChecksum, FileContainerInfo containerFileInfo) throws IOException {
-    super(dfsClient, containerFile, verifyChecksum);
-    this.containerFileInfo = containerFileInfo;
-    super.seek(containerFileInfo.getOffset());
+  public SmartDFSInputStream(DFSClient dfsClient, String containerFilePath,
+      boolean verifyChecksum, FileContainerInfo fileContainerInfo) throws IOException {
+    super(dfsClient, containerFilePath, verifyChecksum);
+    this.fileContainerInfo = fileContainerInfo;
+    super.seek(fileContainerInfo.getOffset());
   }
 
   @Override
   public long getFileLength() {
     String callerClass = Thread.currentThread().getStackTrace()[2].getClassName();
     if (callerClass.equals("org.apache.hadoop.hdfs.DFSInputStream")) {
-      return containerFileInfo.getLength() + containerFileInfo.getOffset();
+      return fileContainerInfo.getLength() + fileContainerInfo.getOffset();
     }
-    return containerFileInfo.getLength();
+    return fileContainerInfo.getLength();
   }
 
   @Override
   public List<LocatedBlock> getAllBlocks() throws IOException {
     List<LocatedBlock> blocks = super.getAllBlocks();
     List<LocatedBlock> ret = new ArrayList<>();
-    long off = containerFileInfo.getOffset();
-    long len = containerFileInfo.getLength();
+    long off = fileContainerInfo.getOffset();
+    long len = fileContainerInfo.getLength();
     for (LocatedBlock b : blocks) {
       if (off > b.getStartOffset() + b.getBlockSize() || off + len < b.getStartOffset()) {
         continue;
@@ -64,32 +64,32 @@ public class SmartDFSInputStream extends DFSInputStream {
 
   @Override
   public synchronized int read(final byte buf[], int off, int len) throws IOException {
-    int realLen = (int) Math.min(len, containerFileInfo.getLength());
+    int realLen = (int) Math.min(len, fileContainerInfo.getLength());
     return super.read(buf, off, realLen);
   }
 
   @Override
   public synchronized int read(final ByteBuffer buf) throws IOException {
-    int realLen = (int) Math.min(buf.remaining(), containerFileInfo.getLength());
+    int realLen = (int) Math.min(buf.remaining(), fileContainerInfo.getLength());
     buf.limit(realLen + buf.position());
     return super.read(buf);
   }
 
   @Override
   public int read(long position, byte[] buffer, int offset, int length) throws IOException {
-    int realLen = (int) Math.min(length, containerFileInfo.getLength());
-    long realPos = position + containerFileInfo.getOffset();
+    int realLen = (int) Math.min(length, fileContainerInfo.getLength());
+    long realPos = position + fileContainerInfo.getOffset();
     return super.read(realPos, buffer, offset, realLen);
   }
 
   @Override
   public synchronized long getPos() throws IOException {
-    return super.getPos() - containerFileInfo.getOffset();
+    return super.getPos() - fileContainerInfo.getOffset();
   }
 
   @Override
   public synchronized void setReadahead(Long readahead) throws IOException {
-    long realReadAhead = Math.min(readahead, containerFileInfo.getLength());
+    long realReadAhead = Math.min(readahead, fileContainerInfo.getLength());
     super.setReadahead(realReadAhead);
   }
 
@@ -97,7 +97,7 @@ public class SmartDFSInputStream extends DFSInputStream {
   public synchronized ByteBuffer read(ByteBufferPool bufferPool,
                                       int maxLength, EnumSet<ReadOption> opts)
           throws IOException, UnsupportedOperationException {
-    int realMaxLen = (int) Math.min(maxLength, containerFileInfo.getLength());
+    int realMaxLen = (int) Math.min(maxLength, fileContainerInfo.getLength());
     return super.read(bufferPool, realMaxLen, opts);
   }
 }

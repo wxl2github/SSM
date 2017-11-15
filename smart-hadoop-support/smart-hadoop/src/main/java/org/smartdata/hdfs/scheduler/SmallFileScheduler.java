@@ -34,6 +34,7 @@ import org.smartdata.model.action.ScheduleResult;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,8 +43,10 @@ public class SmallFileScheduler extends ActionSchedulerService {
   private MetaStore metaStore;
   // <Container file path, retry number>
   private Map<String, Integer> fileLock;
-  private String containerFile = null;
-  private Map<String, FileContainerInfo> fileContainerInfoMap;
+  // <actionId, container file path>
+  private Map<Long, String> containerFileMap;
+  // <actionId, file container info map>
+  private Map<Long, Map<String, FileContainerInfo>> fileContainerInfoMap;
   public static final Logger LOG = LoggerFactory.getLogger(SmallFileScheduler.class);
 
   public SmallFileScheduler(SmartContext context, MetaStore metaStore) throws IOException {
@@ -54,6 +57,7 @@ public class SmallFileScheduler extends ActionSchedulerService {
   @Override
   public void init() throws IOException {
     this.fileLock = new ConcurrentHashMap<>();
+    this.containerFileMap = new ConcurrentHashMap<>();
     this.fileContainerInfoMap = new ConcurrentHashMap<>();
   }
 
@@ -64,28 +68,16 @@ public class SmallFileScheduler extends ActionSchedulerService {
   }
 
   public ScheduleResult onSchedule(ActionInfo actionInfo, LaunchAction action) {
+    long actionId = actionInfo.getActionId();
     if (actionInfo.getActionName().equals("compact")) {
       try {
+
         // Check if container file is null
         String containerFilePath = action.getArgs().get("-containerFile");
         if (containerFilePath == null) {
           return ScheduleResult.FAIL;
         } else {
-          this.containerFile = containerFilePath;
-        }
-
-        if (fileLock.containsKey(containerFile)) {
-          int retryNum = fileLock.get(containerFile);
-          if (retryNum > 3) {
-            LOG.error("This container file: " + containerFile + " is locked, retry failed.");
-            return ScheduleResult.FAIL;
-          } else {
-            LOG.warn("This container file: " + containerFile + " is locked, retry.");
-            fileLock.put(containerFile, retryNum + 1);
-            return ScheduleResult.RETRY;
-          }
-        } else {
-          fileLock.put(containerFile, 0); // Lock this container file
+          containerFileMap.put(actionId, containerFilePath);
         }
 
         // Get file container info of small files
@@ -95,12 +87,30 @@ public class SmallFileScheduler extends ActionSchedulerService {
           return ScheduleResult.FAIL;
         }
         ArrayList<String> smallFileList = new Gson().fromJson(smallFiles, new ArrayList<String>().getClass());
+        Map<String, FileContainerInfo> fileContainerInfo = new HashMap<>();
         for (String filePath : smallFileList) {
           FileInfo fileInfo = metaStore.getFile(filePath);
           long fileLen = fileInfo.getLength();
-          fileContainerInfoMap.put(filePath, new FileContainerInfo(containerFile, offset, fileLen));
+          fileContainerInfo.put(filePath, new FileContainerInfo(containerFilePath, offset, fileLen));
           offset += fileLen;
         }
+        fileContainerInfoMap.put(actionId, fileContainerInfo);
+
+        // Check if container file is locked and retry
+        if (fileLock.containsKey(containerFilePath)) {
+          int retryNum = fileLock.get(containerFilePath);
+          if (retryNum > 3) {
+            LOG.error("This container file: " + containerFilePath + " is locked, retry failed.");
+            return ScheduleResult.FAIL;
+          } else {
+            LOG.warn("This container file: " + containerFilePath + " is locked, retry.");
+            fileLock.put(containerFilePath, retryNum + 1);
+            return ScheduleResult.RETRY;
+          }
+        } else {
+          fileLock.put(containerFilePath, 0); // Lock this container file
+        }
+
         return ScheduleResult.SUCCESS;
       } catch (Exception e) {
         LOG.error("Exception occurred while processing " + action, e);
@@ -131,13 +141,15 @@ public class SmallFileScheduler extends ActionSchedulerService {
   public void onActionFinished(ActionInfo actionInfo) {
     if (actionInfo.isFinished()) {
       if (actionInfo.isSuccessful()) {
+        long actionId = actionInfo.getActionId();
         if (actionInfo.getActionName().equals("compact")) {
           try {
-            for (Map.Entry<String, FileContainerInfo> entry : fileContainerInfoMap.entrySet()) {
+            for (Map.Entry<String, FileContainerInfo> entry : fileContainerInfoMap.get(actionId).entrySet()) {
               metaStore.insertSmallFile(entry.getKey(), entry.getValue());
             }
-            if (fileLock.containsKey(containerFile)) {
-              fileLock.remove(containerFile); // Remove container file lock
+            String containerFilePath = containerFileMap.get(actionId);
+            if (fileLock.containsKey(containerFilePath)) {
+              fileLock.remove(containerFilePath); // Remove container file lock
             }
           } catch (MetaStoreException e) {
             LOG.error("Process small file compact action in metaStore failed!", e);
