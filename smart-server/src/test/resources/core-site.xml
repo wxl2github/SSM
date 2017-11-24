@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 <!--
   Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,5 +16,32 @@
 <!-- Put site-specific property overrides in this file. -->
 
 <configuration>
+  <property>
+    <name>hadoop.proxyuser.root.hosts</name>
+    <value>*</value>
+    <description>The superuser can connect only from anywhere(here we also can set comma separated host names,such as: 'host1,host2') to impersonate a user</description>
+  </property>
+  <property>
+    <name>hadoop.proxyuser.root.groups</name>
+    <value>*</value>
+    <description>Allow the superuser root to impersonate any members of the any groups</description>
+  </property>
 
+  <property>
+     <name>hadoop.tmp.dir</name>
+     <value>/root/hdfs/tmp</value>
+  </property>
+  <property>
+      <name>fs.defaultFS</name>
+      <value>hdfs://localhost:9000</value>
+  </property>
+  <property>
+    <name>dfs.permissions.enabled</name>
+    <value>false</value>
+  </property>
+  <property>
+    <name>fs.hdfs.impl</name>
+    <value>org.smartdata.hadoop.filesystem.SmartFileSystem</value>
+    <description>The FileSystem for hdfs URL</description>
+  </property>
 </configuration>

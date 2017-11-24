@@ -230,7 +230,7 @@ public class MetaStoreUtils {
             "  rid INTEGER NOT NULL,\n" +
             "  aids varchar(4096) NOT NULL,\n" +
             "  state tinyint(4) NOT NULL,\n" +
-            "  parameters varchar(4096) NOT NULL,\n" +
+            "  parameters varchar(40960) NOT NULL,\n" +
             "  generate_time bigint(20) NOT NULL,\n" +
             "  state_changed_time bigint(20) NOT NULL\n" +
             ") ;",

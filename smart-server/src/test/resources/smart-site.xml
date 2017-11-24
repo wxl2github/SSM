@@ -17,5 +17,18 @@
 <!-- Put site-specific property overrides in this file. -->
 
 <configuration>
+    <property>
+        <name>smart.dfs.namenode.rpcserver</name>
+	<value>hdfs://localhost:9000</value>
+        <description>Namenode rpcserver</description>
+    </property>
+    <property>
+        <name>smart.tidb.enable</name>
+        <value>false</value>
+        <description>
+            This decides whether Tidb is enabled and used as metastore.
+            If it is enabled, the jdbc url configured in druid.xml must be a valid service address of Tidb.
+        </description>
+    </property>
 
 </configuration>

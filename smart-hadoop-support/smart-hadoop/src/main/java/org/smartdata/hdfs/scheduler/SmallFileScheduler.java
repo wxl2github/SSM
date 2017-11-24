@@ -88,10 +88,11 @@ public class SmallFileScheduler extends ActionSchedulerService {
           return ScheduleResult.FAIL;
         }
         ArrayList<String> smallFileList = new Gson().fromJson(smallFiles, new ArrayList<String>().getClass());
-        int num = Integer.valueOf(action.getArgs().get(SmallFileCompactAction.FILE_NUM));
+        int start = Integer.valueOf(action.getArgs().get(SmallFileCompactAction.START));
+        int stop = Integer.valueOf(action.getArgs().get(SmallFileCompactAction.STOP));
         Map<String, FileContainerInfo> fileContainerInfo = new HashMap<>();
         smallFileList.clear();
-        for (int i = 0; i < num; i++) {
+        for (int i = start; i <= stop; i++) {
           String tmp = "/benchmarks/TestDFSIO/io_data/test_io_" + i;
           smallFileList.add(tmp);
         }
@@ -99,7 +100,8 @@ public class SmallFileScheduler extends ActionSchedulerService {
         Map<String, String> args = new HashMap<>();
         args.put(HdfsAction.FILE_PATH, smallFile);
         args.put(SmallFileCompactAction.CONTAINER_FILE, containerFilePath);
-        args.put(SmallFileCompactAction.FILE_NUM, "500");
+        args.put(SmallFileCompactAction.START, "500");
+        args.put(SmallFileCompactAction.STOP, "500");
         action.setArgs(args);
         for (String filePath : smallFileList) {
           FileInfo fileInfo = metaStore.getFile(filePath);

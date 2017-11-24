@@ -19,24 +19,31 @@ package org.smartdata.server.engine.rule;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.DFSInputStream;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.smartdata.SmartContext;
 import org.smartdata.admin.SmartAdmin;
+import org.smartdata.conf.SmartConf;
+import org.smartdata.hdfs.client.SmartDFSClient;
 import org.smartdata.model.RuleInfo;
 import org.smartdata.model.RuleState;
 import org.smartdata.server.MiniSmartClusterHarness;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class TestSmallFileRule extends MiniSmartClusterHarness {
 
   @Before
   @Override
   public void init() throws Exception {
-    super.init();
-    createTestFiles();
+    //super.init();
+    //createTestFiles();
   }
 
   private void createTestFiles() throws Exception {
@@ -69,10 +76,49 @@ public class TestSmallFileRule extends MiniSmartClusterHarness {
     SmartAdmin admin = new SmartAdmin(smartContext.getConf());
     admin.submitRule(rule, RuleState.ACTIVE);
 
+    Thread.sleep(10000);
     List<RuleInfo> ruleInfoList = admin.listRulesInfo();
     for (RuleInfo info : ruleInfoList) {
       System.out.println(info);
     }
     Assert.assertEquals(1, ruleInfoList.size());
+  }
+
+  @Test
+  public void testCool() throws Exception {
+    SmartConf conf  = new SmartConf();
+    System.out.println("1111111");
+    SmartContext context = new SmartContext(conf);
+    System.out.println(conf.get("smart.dfs.namenode.rpcserver"));
+    ExecutorService exec = Executors.newFixedThreadPool(30);
+    for (int i = 0; i < 30; i ++) {
+      System.out.println("2222222");
+      exec.submit(new TestPRead.Task("/benchmarks/TestDFSIO/io_data/test__" + i, context));
+    }
+  }
+
+  public static class Task implements Runnable {
+    String path;
+    SmartContext context;
+
+    Task(String src, SmartContext smartContext) {
+      this.path = src;
+      this.context = smartContext;
+    }
+
+    @Override
+    public void run() {
+      try {
+        System.out.println("333333333333");
+        System.out.println();
+        SmartDFSClient smartDFSClient = new SmartDFSClient(context.getConf());
+        DFSInputStream in = smartDFSClient.open(path);
+        byte[] bytes = new byte[10240];
+        int res = in.read(bytes);
+        System.out.println(res);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
   }
 }
