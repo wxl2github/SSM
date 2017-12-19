@@ -37,6 +37,7 @@ import org.smartdata.protocol.ClientServerProto.SmartFileCompressionInfoProto;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.List;
 
 public class ProtoBufferHelper {
@@ -110,6 +111,8 @@ public class ProtoBufferHelper {
     SmartFileCompressionInfo.Builder builder = SmartFileCompressionInfo.newBuilder();
     builder.setFileName(proto.getFileName())
         .setBufferSize(proto.getBufferSize())
+        .setOriginalLength(proto.getOriginalLength())
+        .setCompressedLength(proto.getCompressedLength())
         .setOriginalPos(proto.getOriginalPosList())
         .setCompressedPos(proto.getCompressedPosList());
     return builder.build();
@@ -118,9 +121,11 @@ public class ProtoBufferHelper {
   public static SmartFileCompressionInfoProto convert(SmartFileCompressionInfo info) {
     SmartFileCompressionInfoProto.Builder builder = SmartFileCompressionInfoProto.newBuilder();
     builder.setFileName(info.getFileName())
-        .setBufferSize(info.getBufferSize());
-    builder.addAllOriginalPos(info.getOriginalPos());
-    builder.addAllCompressedPos(info.getCompressedPos());
+        .setBufferSize(info.getBufferSize())
+        .setOriginalLength(info.getOriginalLength())
+        .setCompressedLength(info.getCompressedLength());
+    builder.addAllOriginalPos(Arrays.asList(info.getOriginalPos()));
+    builder.addAllCompressedPos(Arrays.asList(info.getCompressedPos()));
     return builder.build();
   }
 

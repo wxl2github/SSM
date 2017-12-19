@@ -17,7 +17,8 @@
  */
 package org.smartdata.model;
 
-import java.util.ArrayList;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -27,17 +28,27 @@ public class SmartFileCompressionInfo {
 
   private String fileName;
   private int bufferSize;
-  private List<Long> originalPos;
-  private List<Long> compressedPos;
+  private long originalLength;
+  private long compressedLength;
+  private Long[] originalPos;
+  private Long[] compressedPos;
 
   public SmartFileCompressionInfo(String fileName, int bufferSize) {
-    this(fileName, bufferSize, new ArrayList<Long>(), new ArrayList<Long>());
+    this(fileName, bufferSize, 0, 0, new Long[0], new Long[0]);
   }
 
   public SmartFileCompressionInfo(String fileName, int bufferSize,
-      List<Long> originalPos, List<Long> compressedPos) {
+      Long[] originalPos, Long[] compressedPos) {
+    this(fileName, bufferSize, 0, 0, originalPos, compressedPos);
+  }
+
+  public SmartFileCompressionInfo(String fileName, int bufferSize,
+      long originalLength, long compressedLength, Long[] originalPos,
+      Long[] compressedPos) {
     this.fileName = fileName;
     this.bufferSize = bufferSize;
+    this.originalLength = originalLength;
+    this.compressedLength = compressedLength;
     this.originalPos = originalPos;
     this.compressedPos = compressedPos;
   }
@@ -50,17 +61,128 @@ public class SmartFileCompressionInfo {
     return fileName;
   }
 
-  public List<Long> getOriginalPos() {
+  public long getOriginalLength() {
+    return originalLength;
+  }
+
+  public long getCompressedLength() {
+    return compressedLength;
+  }
+
+  public void setOriginalLength(long length) {
+    originalLength = length;
+  }
+
+  public void setCompressedLength(long length) {
+    compressedLength = length;
+  }
+
+  public Long[] getOriginalPos() {
     return originalPos;
   }
 
-  public List<Long> getCompressedPos() {
+  public Long[] getCompressedPos() {
     return compressedPos;
   }
 
-  public void setPositionMapping(long originalPosition, long compressedPosition) {
-    originalPos.add(originalPosition);
-    compressedPos.add(compressedPosition);
+  /**
+   * Get the index of originalPos and compressedPos of the given original offset.
+   *
+   * @param offset the offset of original file
+   * @return the index of the compression trunk where the offset locates
+   */
+  public int getPosIndexByOriginalOffset(long offset) {
+    int trunkIndex = Arrays.binarySearch(originalPos, offset);
+    if (trunkIndex < -1) {
+      trunkIndex = -trunkIndex - 2;
+    } else if (trunkIndex == -1) {
+      trunkIndex = 0;
+    }
+    return trunkIndex;
+  }
+
+  /**
+   * Get the index of originalPos and compressedPos of the given compressed offset.
+   *
+   * @param offset the offset of compressed file
+   * @return the index of the compression trunk where the offset locates
+   */
+  public int getPosIndexByCompressedOffset(long offset) {
+    int trunkIndex = Arrays.binarySearch(compressedPos, offset);
+    if (trunkIndex < -1) {
+      trunkIndex = -trunkIndex - 2;
+    } else if (trunkIndex == -1) {
+      trunkIndex = 0;
+    }
+    return trunkIndex;
+  }
+
+  /**
+   * Locate the compression trunk with the given offset (either origin or compressed).
+   *
+   * @param compressed true for compressed offset, false for origin offset
+   * @param offset
+   * @return the compression trunk where the offset locates
+   * @throws IOException
+   */
+  public CompressionTrunk locateCompressionTrunk(boolean compressed,
+      long offset) throws IOException {
+    int index = compressed ? getPosIndexByCompressedOffset(offset) :
+        getPosIndexByOriginalOffset(offset);
+    CompressionTrunk compressionTrunk = new CompressionTrunk(index);
+    compressionTrunk.setOriginOffset(originalPos[index]);
+    compressionTrunk.setOriginLength(getOriginTrunkSize(index));
+    compressionTrunk.setCompressedOffset(compressedPos[index]);
+    compressionTrunk.setCompressedLength(getCompressedTrunkSize(index));
+    return compressionTrunk;
+  }
+
+  /**
+   * Get original trunk size with the given index.
+   *
+   * @param index
+   * @return
+   */
+  public long getOriginTrunkSize(int index) throws IOException {
+    if (index >= originalPos.length || index < 0) {
+      throw new IOException("Trunk index out of bound");
+    }
+    long trunkSize = 0;
+    if (index == originalPos.length - 1) {
+      trunkSize = originalLength - originalPos[index];
+    } else {
+      trunkSize = originalPos[index + 1] - originalPos[index];
+    }
+    return trunkSize;
+  }
+
+  /**
+   * Get the compressed trunk size with the given index.
+   *
+   * @param index
+   * @return
+   */
+  public long getCompressedTrunkSize(int index) throws IOException {
+    if (index >= compressedPos.length || index < 0) {
+      throw new IOException("Trunk index out of bound");
+    }
+    long trunkSize = 0;
+    if (index == compressedPos.length - 1) {
+      trunkSize = compressedLength - compressedPos[index];
+    } else {
+      trunkSize = compressedPos[index + 1] - compressedPos[index];
+    }
+    return trunkSize;
+  }
+
+  public void setPositionMapping(Long[] originalPos, Long[] compressedPos)
+      throws IOException{
+    if (originalPos.length != compressedPos.length) {
+      throw new IOException("Input of position mapping is incorrect : "
+          + "originalPos.length != compressedPos.length");
+    }
+    this.originalPos = originalPos;
+    this.compressedPos = compressedPos;
   }
 
   public static Builder newBuilder() {
@@ -70,8 +192,10 @@ public class SmartFileCompressionInfo {
   public static class Builder {
     private String fileName = null;
     private int bufferSize = 0;
-    private List<Long> originalPos = new ArrayList<>();
-    private List<Long> compressedPos = new ArrayList<>();
+    private long originalLength;
+    private long compressedLength;
+    private Long[] originalPos;
+    private Long[] compressedPos;
 
     public static Builder create() {
       return new Builder();
@@ -87,19 +211,39 @@ public class SmartFileCompressionInfo {
       return this;
     }
 
-    public Builder setOriginalPos(List<Long> originalPos) {
+    public Builder setOriginalLength(long originalLength) {
+      this.originalLength = originalLength;
+      return this;
+    }
+
+    public Builder setCompressedLength(long compressedLength) {
+      this.compressedLength = compressedLength;
+      return this;
+    }
+
+    public Builder setOriginalPos(Long[] originalPos) {
       this.originalPos = originalPos;
       return this;
     }
 
-    public Builder setCompressedPos(List<Long> compressedPos) {
+    public Builder setOriginalPos(List<Long> originalPos) {
+      this.originalPos = originalPos.toArray(new Long[0]);
+      return this;
+    }
+
+    public Builder setCompressedPos(Long[] compressedPos) {
       this.compressedPos = compressedPos;
       return this;
     }
 
+    public Builder setCompressedPos(List<Long> compressedPos) {
+      this.compressedPos = compressedPos.toArray(new Long[0]);
+      return this;
+    }
+
     public SmartFileCompressionInfo build() {
-      return new SmartFileCompressionInfo(fileName, bufferSize, originalPos,
-          compressedPos);
+      return new SmartFileCompressionInfo(fileName, bufferSize, originalLength,
+          compressedLength, originalPos, compressedPos);
     }
   }
 }

@@ -18,7 +18,9 @@
 package org.smartdata.hdfs.action;
 
 import com.google.gson.Gson;
+import org.apache.hadoop.fs.Hdfs;
 import org.apache.hadoop.hdfs.DFSInputStream;
+import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.io.compress.snappy.SnappyCompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +54,9 @@ public class CompressionAction extends HdfsAction {
   public static final String BUF_SIZE = "-bufSize";
 
   private String filePath;
-  private int bufferSize = 256 * 1024;
+  private int bufferSize = 10 * 1024 * 1024;
+
+  private SmartFileCompressionInfo compressionInfo;
 
   @Override
   public void init(Map<String, String> args) {
@@ -74,11 +78,21 @@ public class CompressionAction extends HdfsAction {
       throw new ActionException("ReadFile Action fails, file doesn't exist!");
     }
     DFSInputStream dfsInputStream = dfsClient.open(filePath);
+    compressionInfo = new SmartFileCompressionInfo(filePath, bufferSize);
 
     // Generate compressed file
-    String compressedFileName = filePath + ".snappy";
-    OutputStream compressedOutputStream = dfsClient.create(compressedFileName, true);
+    String compressedFileName = "/tmp/" + System.currentTimeMillis() + ".ssm_snappy";
+    HdfsFileStatus srcFile = dfsClient.getFileInfo(filePath);
+    short replication = srcFile.getReplication();
+    long blockSize = srcFile.getBlockSize();
+    compressionInfo.setOriginalLength(srcFile.getLen());
+    OutputStream compressedOutputStream = dfsClient.create(compressedFileName,
+      true, replication, blockSize);
     compress(dfsInputStream, compressedOutputStream);
+    HdfsFileStatus destFile = dfsClient.getFileInfo(compressedFileName);
+    compressionInfo.setCompressedLength(destFile.getLen());
+    String compressionInfoJson = new Gson().toJson(compressionInfo);
+    appendResult(compressionInfoJson);
 
     // Replace the original file with the compressed file
     dfsClient.delete(filePath);
@@ -86,22 +100,8 @@ public class CompressionAction extends HdfsAction {
   }
 
   private void compress(InputStream inputStream, OutputStream outputStream) throws IOException {
-    SmartFileCompressionInfo compressionInfo = new SmartFileCompressionInfo(
-        filePath, bufferSize);
     SmartCompressorStream smartCompressorStream = new SmartCompressorStream(
-        outputStream, new SnappyCompressor(bufferSize), bufferSize);
-    byte[] buf = new byte[bufferSize * 5];
-    while (true) {
-      int len = inputStream.read(buf, 0, buf.length);
-      if (len <= 0) {
-        break;
-      }
-      smartCompressorStream.write(buf, 0, len);
-    }
-    smartCompressorStream.finish();
-    outputStream.close();
-
-    String compressionInfoJson = new Gson().toJson(compressionInfo);
-    appendResult(compressionInfoJson);
+        inputStream, outputStream, bufferSize, compressionInfo);
+    smartCompressorStream.convert();
   }
 }

@@ -26,7 +26,10 @@ import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import com.google.gson.Gson;
+import com.google.gson.reflect.*;
 
 /**
  * CompressionFileDao.
@@ -49,11 +52,23 @@ public class CompressionFileDao {
     simpleJdbcInsert.setTableName(TABLE_NAME);
     simpleJdbcInsert.execute(toMap(compressionInfo));
   }
-
+  
   public void deleteByName(String fileName) {
     JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
     final String sql = "DELETE FROM " + TABLE_NAME + " WHERE file_name = ?";
     jdbcTemplate.update(sql, fileName);
+  }
+
+  public void deleteAll() {
+    JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+    final String sql = "DELETE FROM " + TABLE_NAME;
+    jdbcTemplate.execute(sql);
+  }
+
+  public List<SmartFileCompressionInfo> getAll() {
+    JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+    return jdbcTemplate.query("SELECT * FROM " + TABLE_NAME,
+        new CompressFileRowMapper());
   }
 
   public SmartFileCompressionInfo getInfoByName(String fileName) {
@@ -63,19 +78,38 @@ public class CompressionFileDao {
   }
 
   private Map<String, Object> toMap(SmartFileCompressionInfo compressionInfo) {
+    Gson gson = new Gson();
     Map<String, Object> parameters = new HashMap<>();
+    Long[] originalPos = compressionInfo.getOriginalPos();
+    Long[] compressedPos = compressionInfo.getCompressedPos();
+    String originalPosGson = gson.toJson(originalPos);
+    String compressedPosGson = gson.toJson(compressedPos);
     parameters.put("file_name", compressionInfo.getFileName());
     parameters.put("buffer_size", compressionInfo.getBufferSize());
+    parameters.put("original_length", compressionInfo.getOriginalLength());
+    parameters.put("compressed_length", compressionInfo.getCompressedLength());
+    parameters.put("originalPos",originalPosGson);
+    parameters.put("compressedPos",compressedPosGson);
     return parameters;
   }
 
   class CompressFileRowMapper implements RowMapper<SmartFileCompressionInfo> {
     @Override
     public SmartFileCompressionInfo mapRow(ResultSet resultSet, int i) throws SQLException {
-      SmartFileCompressionInfo compressionInfo = new SmartFileCompressionInfo(
-          resultSet.getString("file_name"),
-          resultSet.getInt("buffer_size")
-      );
+      Gson gson = new Gson();
+      String originalPosGson = resultSet.getString("originalPos");
+      String compressedPosGson = resultSet.getString("compressedPos");
+      Long[] originalPos = gson.fromJson(originalPosGson,new TypeToken<Long[]>(){}.getType());
+      Long[] compressedPos = gson.fromJson(compressedPosGson,new TypeToken<Long[]>(){}.getType());
+      SmartFileCompressionInfo compressionInfo =
+          SmartFileCompressionInfo.newBuilder()
+          .setFileName(resultSet.getString("file_name"))
+          .setBufferSize(resultSet.getInt("buffer_size"))
+          .setOriginalLength(resultSet.getLong("original_length"))
+          .setCompressedLength(resultSet.getLong("compressed_length"))
+          .setOriginalPos(originalPos)
+          .setCompressedPos(compressedPos)
+          .build();
       return compressionInfo;
     }
   }
